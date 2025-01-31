@@ -1,0 +1,63 @@
+//@version=5
+indicator("CM_Williams_VIX_Fix_Combined", overlay=false)
+
+// ———————————————— Input Section ————————————————
+mode = input.string(title="Mode", defval="Merged", options=["Merged", "Tops Only", "Bottoms Only"])
+
+pd = input(22, title="LookBack Period Standard Deviation")
+bbl = input(20, title="Bollinger Band Length")
+mult = input.float(2.0, minval=1, maxval=5, title="Bollinger Band Standard Deviation Multiplier")
+lb = input(50, title="Look Back Period Percentile")
+ph = input.float(0.85, title="Percentile High")
+pl = input.float(1.01, title="Percentile Low")
+hp = input(false, title="Show Percentile Ranges?")
+sd = input(false, title="Show Standard Deviation Line?")
+
+// ———————————————— Bottoms Detection ————————————————
+wvf_bottom = ((ta.highest(close, pd) - low) / (ta.highest(close, pd))) * 100
+
+sDev_bottom = mult * ta.stdev(wvf_bottom, bbl)
+midLine_bottom = ta.sma(wvf_bottom, bbl)
+upperBand_bottom = midLine_bottom + sDev_bottom
+lowerBand_bottom = midLine_bottom - sDev_bottom
+
+rangeHigh_bottom = (ta.highest(wvf_bottom, lb)) * ph
+rangeLow_bottom = (ta.lowest(wvf_bottom, lb)) * pl
+
+col_bottom = (wvf_bottom >= upperBand_bottom or wvf_bottom >= rangeHigh_bottom) ? color.green : color.gray
+
+// ———————————————— Tops Detection ————————————————
+wvf_top = ((ta.lowest(close, pd) - high) / (ta.lowest(close, pd))) * 100
+
+sDev_top = mult * ta.stdev(wvf_top, bbl)
+midLine_top = ta.sma(wvf_top, bbl)
+upperBand_top = midLine_top + sDev_top
+lowerBand_top = midLine_top - sDev_top
+
+rangeHigh_top = (ta.highest(wvf_top, lb)) * pl
+rangeLow_top = (ta.lowest(wvf_top, lb)) * ph
+
+col_top = (wvf_top <= lowerBand_top or wvf_top <= rangeLow_top) ? color.red : color.gray
+
+// ———————————————— Define Plotting Variables ————————————————
+plot_wvf_bottom = mode == "Merged" or mode == "Bottoms Only" ? wvf_bottom : na
+plot_upperBand_bottom = mode == "Merged" or mode == "Bottoms Only" ? (sd and na(upperBand_bottom) == false ? upperBand_bottom : na) : na
+plot_rangeHigh_bottom = mode == "Merged" or mode == "Bottoms Only" ? (hp and na(rangeHigh_bottom) == false ? rangeHigh_bottom : na) : na
+plot_rangeLow_bottom = mode == "Merged" or mode == "Bottoms Only" ? (hp and na(rangeLow_bottom) == false ? rangeLow_bottom : na) : na
+
+plot_wvf_top = mode == "Merged" or mode == "Tops Only" ? wvf_top : na
+plot_upperBand_top = mode == "Merged" or mode == "Tops Only" ? (sd and na(lowerBand_top) == false ? lowerBand_top : na) : na
+plot_rangeHigh_top = mode == "Merged" or mode == "Tops Only" ? (hp and na(rangeHigh_top) == false ? rangeHigh_top : na) : na
+plot_rangeLow_top = mode == "Merged" or mode == "Tops Only" ? (hp and na(rangeLow_top) == false ? rangeLow_top : na) : na
+
+// ———————————————— Plotting Section ————————————————
+plot(plot_wvf_bottom, title="Williams VIX Fix - Bottoms", style=plot.style_histogram, linewidth=3, color=col_bottom)
+plot(plot_wvf_top, title="Williams VIX Fix - Tops", style=plot.style_histogram, linewidth=3, color=col_top)
+
+plot(plot_rangeHigh_bottom, title="Range High Percentile - Bottoms", style=plot.style_line, linewidth=2, color=color.orange)
+plot(plot_rangeLow_bottom, title="Range Low Percentile - Bottoms", style=plot.style_line, linewidth=2, color=color.orange)
+plot(plot_upperBand_bottom, title="Upper Band - Bottoms", style=plot.style_line, linewidth=2, color=color.aqua)
+
+plot(plot_rangeHigh_top, title="Range High Percentile - Tops", style=plot.style_line, linewidth=2, color=color.purple)
+plot(plot_rangeLow_top, title="Range Low Percentile - Tops", style=plot.style_line, linewidth=2, color=color.purple)
+plot(plot_upperBand_top, title="Lower Band - Tops", style=plot.style_line, linewidth=2, color=color.yellow)
